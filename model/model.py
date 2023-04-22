@@ -2,18 +2,20 @@ import random
 import torch
 import os
 from reward import reward_function
-import torch.nn as nn
 import torch.optim as optim
 import utils
 from tqdm import tqdm
+from sys import platform
 
 
 def train(encoder, decoder, agent, inputs, num_epochs, learning_rate, checkpoint_dir, checkpoint_freq=50):
     # Check if a GPU is available and set the device accordingly
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if platform == "darwin":
+        device = torch.device("mps")
+    else:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     optimizer = optim.Adam(agent.parameters(), lr=learning_rate)
-    criterion = nn.MSELoss()
 
     # Move the models to the device
     encoder = encoder.to(device)
