@@ -5,6 +5,7 @@ from reward import reward_function
 import torch.nn as nn
 import torch.optim as optim
 import utils
+from tqdm import tqdm
 
 
 def train(encoder, decoder, agent, inputs, num_epochs, learning_rate, checkpoint_dir, checkpoint_freq=50):
@@ -31,7 +32,7 @@ def train(encoder, decoder, agent, inputs, num_epochs, learning_rate, checkpoint
     else:
         start_epoch = 0
 
-    for i in range(start_epoch, num_epochs):
+    for i in tqdm(range(start_epoch, num_epochs)):
         bb, measured = random.choice(inputs)
         input_sequence = bb.x.to(device)
         edge_index = bb.edge_index.to(device)
@@ -39,7 +40,7 @@ def train(encoder, decoder, agent, inputs, num_epochs, learning_rate, checkpoint
         hidden = encoder.init_hidden().to(device)
 
         port_pressures = agent(input_sequence, edge_index, hidden)
-        predicted_cycles = utils.utils.estimate_cycles(port_pressures)
+        predicted_cycles = utils.estimate_cycles(port_pressures)
 
         reward = reward_function(port_pressures, predicted_cycles, measured, bb.x)
 
