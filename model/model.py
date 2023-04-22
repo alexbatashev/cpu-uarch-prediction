@@ -1,9 +1,9 @@
 import random
 import torch
 import os
-from reward import reward_function
+from model.reward import reward_function
 import torch.optim as optim
-import utils
+import model.utils as utils
 from tqdm import tqdm
 from sys import platform
 
@@ -11,7 +11,7 @@ from sys import platform
 def train(encoder, decoder, agent, inputs, num_epochs, learning_rate, checkpoint_dir, checkpoint_freq=50):
     # Check if a GPU is available and set the device accordingly
     if platform == "darwin":
-        device = torch.device("mps")
+        device = torch.device("cpu")
     else:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -35,11 +35,12 @@ def train(encoder, decoder, agent, inputs, num_epochs, learning_rate, checkpoint
         start_epoch = 0
 
     for i in tqdm(range(start_epoch, num_epochs)):
-        bb, measured = random.choice(inputs)
+        choice = random.choice(inputs)
+        bb, measured = choice
         input_sequence = bb.x.to(device)
         edge_index = bb.edge_index.to(device)
 
-        hidden = encoder.init_hidden().to(device)
+        hidden = encoder.init_hidden(device)
 
         port_pressures = agent(input_sequence, edge_index, hidden)
         predicted_cycles = utils.estimate_cycles(port_pressures)

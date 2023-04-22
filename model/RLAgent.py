@@ -11,5 +11,6 @@ class RlAgent(nn.Module):
     def forward(self, input_sequence, edge_index, hidden):
         encoder_output, encoder_hidden = self.encoder(input_sequence, edge_index, hidden)
         decoder_input = torch.tensor([[0.0]])  # Placeholder input for decoder
-        decoder_output, decoder_hidden = self.decoder(decoder_input, encoder_hidden)
+        hidden = (torch.zeros(1, 10).to(encoder_output.device), torch.zeros(1, 10).to(encoder_output.device))
+        decoder_output, decoder_hidden = self.decoder(encoder_output, hidden)
         return decoder_output

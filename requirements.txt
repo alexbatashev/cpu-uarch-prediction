@@ -1,3 +1,4 @@
 torch
-torch_geometric
-tqdm
+torch-geometric
+tqdm~=4.65.0
+pyyaml

@@ -1,6 +1,7 @@
 import os
 import json
 import torch
+import yaml
 from torch_geometric.data import Data
 
 
@@ -40,6 +41,18 @@ def load_all_basic_blocks_data(directory):
             basic_blocks_data.append(basic_block_data)
 
     return basic_blocks_data
+
+
+def load_measured_data(directory):
+    measured_cycles = []
+    for file_name in os.listdir(directory):
+        if file_name.endswith(".yaml"):
+            file_path = os.path.join(directory, file_name)
+            file = open(file_path, "r")
+            data = yaml.safe_load(file)
+            file.close()
+            measured_cycles.append(data["results"]["cycles"])
+    return measured_cycles
 
 
 def save_checkpoint(epoch, model, optimizer, checkpoint_dir):
