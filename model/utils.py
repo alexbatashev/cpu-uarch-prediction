@@ -3,6 +3,7 @@ import json
 import torch
 import yaml
 from torch_geometric.data import Data
+import numpy
 
 
 def load_basic_block_data(json_file_path):
@@ -81,3 +82,22 @@ def estimate_cycles(port_pressure_sequence):
         total_cycles += max_pressure
 
     return total_cycles
+
+
+def print_port_pressure_table(predicted_port_pressures):
+    num_ports = predicted_port_pressures.shape[1]
+    header = "Port  |"
+    separator = "------"
+
+    for i in range(num_ports):
+        header += " {:^7}|".format(i)
+        separator += "--------"
+
+    print(header)
+    print(separator)
+
+    for i, row in enumerate(predicted_port_pressures):
+        row_string = "Instr {}".format(i+1)
+        for pressure in row:
+            row_string += " {:<7.2f}|".format(pressure)
+        print(row_string)
