@@ -98,7 +98,7 @@ def train(predictor, device, loader, num_epochs, learning_rate, checkpoint_dir, 
             pbar.update()
 
     writer.flush()
-    choice = random.choice(loader)
+    choice = random.choice(loader.dataset)
     bb, measured, _ = choice
     input_sequence = bb.x.to(device)
     edge_index = bb.edge_index.to(device)
