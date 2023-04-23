@@ -1,0 +1,1 @@
+{"edges":[[0,1],[0,1]],"nodes":[{"is_barrier":false,"is_compute":false,"is_load":false,"is_store":true,"is_vector":false,"opcode":1826},{"is_barrier":false,"is_compute":false,"is_load":false,"is_store":true,"is_vector":false,"opcode":1807}],"source":"\tmovq\t%r12, 16(%rsp)\n\tmovl\t$1, 24(%rsp)\n"}

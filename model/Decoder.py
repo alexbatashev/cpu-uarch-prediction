@@ -1,13 +1,18 @@
 import torch
 import torch.nn as nn
+from torch_geometric.nn import GATConv
+from torch.functional import F
 
 
 class Decoder(nn.Module):
-    def __init__(self, hidden_size, output_size):
+    def __init__(self, input_dim, hidden_dim, output_dim):
         super(Decoder, self).__init__()
-        self.hidden_size = hidden_size
-        self.lstm = nn.LSTM(hidden_size, output_size)
+        self.fc1 = nn.Linear(hidden_dim, hidden_dim)
+        self.gat1 = GATConv(hidden_dim, output_dim)
+        self.threshold = nn.Threshold(0.2, 0)
 
-    def forward(self, input, hidden):
-        output, hidden = self.lstm(input, hidden)
-        return output, hidden
+    def forward(self, x, edge_index):
+        x = F.relu(self.fc1(x))
+        x = self.threshold(self.gat1(x, edge_index))
+
+        return x

@@ -1,3 +1,5 @@
 checkpoints/
 *.pyc
 .idea
+runs
+trained_models

@@ -14,17 +14,20 @@ data_files = [file_name for file_name in os.listdir(data_path)]
 
 # Remove invalid measurements
 for m in measure_files:
+    data = m.replace(".yaml", ".json")
+    if not os.path.exists(os.path.join(data_path, data)):
+        os.unlink(os.path.join(measure_path, m))
+        continue
     with open(os.path.join(measure_path, m), "r") as f:
         res = yaml.safe_load(f)
-        if res["total_cycles"] is not None:
-            if res["total_cycles"] < res["noise"]:
-                os.unlink(os.path.join(measure_path, m))
+        if res["results"]["total_cycles"] <= res["results"]["noise"]:
+            os.unlink(os.path.join(measure_path, m))
 
 measure_files = [file_name for file_name in os.listdir(measure_path)]
 
 for d in data_files:
     measure = d.replace(".json", ".yaml")
-    if not os.path.exists(os.path.join(data_path, measure)):
+    if not os.path.exists(os.path.join(measure_path, measure)):
         os.unlink(os.path.join(data_path, d))
         continue
 
