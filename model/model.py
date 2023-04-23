@@ -73,10 +73,11 @@ def train(predictor, device, loader, num_epochs, learning_rate, checkpoint_dir, 
 
     epochs = num_epochs - start_epoch
     pbar = tqdm(range(epochs * len(loader)))
-    optimizer.zero_grad()
     step = 0
+    train_loss = 0
     for i in range(start_epoch, num_epochs):
         for choice in loader:
+            optimizer.zero_grad()
             #choice = loader.next()
             bb, measured, _ = choice
             input_sequence = bb.x.to(device)
@@ -85,10 +86,12 @@ def train(predictor, device, loader, num_epochs, learning_rate, checkpoint_dir, 
             port_pressures, _ = predictor(input_sequence, edge_index)
 
             loss = loss_function(port_pressures, measured, bb.x)
+            train_loss += loss.item()
 
-            writer.add_scalar("Loss/train", loss, step)
+            writer.add_scalar("Loss/train", train_loss, step)
             step += 1
             loss.backward()
+            optimizer.step()
 
             if (i + 1) % checkpoint_freq == 0:
                 utils.save_checkpoint(i + 1, predictor, optimizer, checkpoint_dir)
