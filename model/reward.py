@@ -1,5 +1,10 @@
-def reward_function(predicted_cycles, true_cycles, port_pressures, nodes):
-    base_reward = -abs(predicted_cycles - true_cycles)
+import torch.nn as nn
+import torch
+
+
+def reward_function(port_pressures, predicted_cycles, true_cycles, nodes):
+    criterion = nn.SmoothL1Loss()
+    base_reward = criterion(torch.tensor([predicted_cycles]), torch.tensor([true_cycles]))
 
     constraint_violation_penalty = 0
 
@@ -8,6 +13,15 @@ def reward_function(predicted_cycles, true_cycles, port_pressures, nodes):
         if len(p) != ports_num:
             constraint_violation_penalty = 100
             return base_reward - constraint_violation_penalty
+        total = sum(p)
+        if total < 1.0:
+            constraint_violation_penalty += 10
+        # It is unrealistic that a micro-operation occupies
+        # port for less than 1/3 of the CPU cycle
+        for n in p:
+            if n < 0.3:
+                constraint_violation_penalty += 3
+
 
     # TODO proper mapping
     # 2 -> is_load
@@ -28,4 +42,4 @@ def reward_function(predicted_cycles, true_cycles, port_pressures, nodes):
                 if port_pressures[i][k] != 0 and port_pressures[j][k] != 0:
                     constraint_violation_penalty += 1
 
-    return base_reward - constraint_violation_penalty
+    return base_reward * constraint_violation_penalty

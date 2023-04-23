@@ -7,10 +7,13 @@ class RlAgent(nn.Module):
         super(RlAgent, self).__init__()
         self.encoder = encoder
         self.decoder = decoder
+        # FIXME need proper device
+        self.encoder_hidden = encoder.init_hidden(torch.device("cuda"))
+        self.decoder_hidden = decoder.init_hidden(torch.device("cuda"))
 
-    def forward(self, input_sequence, edge_index, hidden):
-        encoder_output, encoder_hidden = self.encoder(input_sequence, edge_index, hidden)
-        decoder_input = torch.tensor([[0.0]])  # Placeholder input for decoder
-        hidden = (torch.zeros(1, 10).to(encoder_output.device), torch.zeros(1, 10).to(encoder_output.device))
-        decoder_output, decoder_hidden = self.decoder(encoder_output, hidden)
+    def forward(self, input_sequence, edge_index):
+        encoder_output, encoder_hidden = self.encoder(input_sequence, edge_index, self.encoder_hidden)
+        self.encoder_hidden = encoder_hidden.detach()
+        decoder_output, decoder_hidden = self.decoder(encoder_output, self.decoder_hidden)
+        self.decoder_hidden = decoder_hidden.detach()
         return decoder_output

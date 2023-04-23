@@ -22,15 +22,22 @@ import random
 
 checkpoint_dir = "checkpoints/ryzen3600"
 
-checkpoint_freq = 5
+checkpoint_freq = 500
 
-num_epochs = 100
+num_epochs = 5000
 
 data = [(x, y) for x, y in zip(inputs, measured_cycles)]
 
+train(encoder, decoder, agent, data, num_epochs, learning_rate, checkpoint_dir, checkpoint_freq)
+
 choice = random.choice(data)
 bb, m = choice
-print(bb.x)
-print(bb.x.size(0))
 
-train(encoder, decoder, agent, data, num_epochs, learning_rate, checkpoint_dir, checkpoint_freq)
+input_sequence = bb.x.to("cuda")
+edge_index = bb.edge_index.to("cuda")
+
+out = agent(input_sequence, edge_index)
+res = out.to("cpu").detach().numpy()
+print(res)
+print(model.utils.estimate_cycles(out))
+print(m)

@@ -51,7 +51,7 @@ def load_measured_data(directory):
             file = open(file_path, "r")
             data = yaml.safe_load(file)
             file.close()
-            measured_cycles.append(data["results"]["cycles"])
+            measured_cycles.append(float(data["results"]["cycles"]) / 10000)
     return measured_cycles
 
 
@@ -74,8 +74,10 @@ def load_checkpoint(checkpoint_path, model, optimizer):
 def estimate_cycles(port_pressure_sequence):
     total_cycles = 0
 
-    for instruction in port_pressure_sequence:
-        max_pressure = max(instruction.values())
+    cpu_port_pressure = port_pressure_sequence.to("cpu").detach().numpy()
+
+    for instruction in cpu_port_pressure:
+        max_pressure = max(instruction)
         total_cycles += max_pressure
 
     return total_cycles
