@@ -18,7 +18,8 @@ def loss_function(predicted_port_pressures, measured_cycles, nodes, alpha=0.1):
     # Measured cycles term
     max_pp = torch.max(predicted_port_pressures, dim=1)
     total_predicted_cycles = torch.sum(max_pp.values)
-    measured_cycles_term = F.mse_loss(total_predicted_cycles, torch.tensor(measured_cycles, device=total_predicted_cycles.device))
+    measured_cycles_term = F.mse_loss(total_predicted_cycles,
+                                      torch.tensor(measured_cycles, device=total_predicted_cycles.device))
 
     # TODO proper mapping
     # 2 -> is_load
@@ -35,7 +36,7 @@ def loss_function(predicted_port_pressures, measured_cycles, nodes, alpha=0.1):
         i for i, node in enumerate(nodes) if not (node[2] or node[3]) and node[1]
     ]
 
-    port_pressures = predicted_port_pressures.detach().numpy()
+    port_pressures = predicted_port_pressures.detach().cpu().numpy()
     for i in pure_memory_instructions:
         for j in pure_compute_instructions:
             for k in range(0, len(port_pressures[0])):
@@ -73,6 +74,7 @@ def train(predictor, device, loader, num_epochs, learning_rate, checkpoint_dir, 
     epochs = num_epochs - start_epoch
     pbar = tqdm(range(epochs * len(loader)))
     optimizer.zero_grad()
+    step = 0
     for i in range(start_epoch, num_epochs):
         for choice in loader:
             #choice = loader.next()
@@ -84,7 +86,8 @@ def train(predictor, device, loader, num_epochs, learning_rate, checkpoint_dir, 
 
             loss = loss_function(port_pressures, measured, bb.x)
 
-            writer.add_scalar("Loss/train", loss, i)
+            writer.add_scalar("Loss/train", loss, step)
+            step += 1
             loss.backward()
 
             if (i + 1) % checkpoint_freq == 0:
