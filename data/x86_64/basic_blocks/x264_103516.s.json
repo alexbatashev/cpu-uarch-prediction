@@ -1,0 +1,1 @@
+{"edges":[[0,1],[0,1]],"nodes":[{"is_barrier":false,"is_compute":false,"is_load":true,"is_store":false,"is_vector":false,"opcode":2959},{"is_barrier":false,"is_compute":false,"is_load":true,"is_store":false,"is_vector":false,"opcode":812}],"source":"\tsubq\t4576(%r15), %rax\n\tcmpq\t8(%rsp), %rax\n"}

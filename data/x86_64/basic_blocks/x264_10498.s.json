@@ -1,0 +1,1 @@
+{"edges":[[0,1]],"nodes":[{"is_barrier":false,"is_compute":true,"is_load":false,"is_store":false,"is_vector":false,"opcode":425},{"is_barrier":false,"is_compute":true,"is_load":false,"is_store":false,"is_vector":false,"opcode":810}],"source":"\taddq\t$533800, %r13\n\tcmpq\t$2135200, %r13\n"}

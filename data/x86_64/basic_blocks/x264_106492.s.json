@@ -1,0 +1,1 @@
+{"edges":[],"nodes":[{"is_barrier":false,"is_compute":true,"is_load":false,"is_store":false,"is_vector":false,"opcode":802},{"is_barrier":false,"is_compute":false,"is_load":true,"is_store":false,"is_vector":false,"opcode":1816}],"source":"\tcmpl\t$2, %eax\n\tmovl\t(%rsp), %r8d\n"}

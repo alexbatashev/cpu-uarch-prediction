@@ -1,0 +1,1 @@
+{"edges":[],"nodes":[{"is_barrier":false,"is_compute":false,"is_load":false,"is_store":true,"is_vector":false,"opcode":1807}],"source":"\tmovl\t$1, 3600(%rbp)\n"}

@@ -1,0 +1,1 @@
+{"edges":[[0,1],[0,1]],"nodes":[{"is_barrier":false,"is_compute":false,"is_load":true,"is_store":false,"is_vector":false,"opcode":798},{"is_barrier":false,"is_compute":false,"is_load":true,"is_store":false,"is_vector":false,"opcode":1816}],"source":"\tcmpl\t$1701667182, 22(%rax)\n\tmovl\t18(%rax), %edx\n"}

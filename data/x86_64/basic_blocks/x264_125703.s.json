@@ -1,0 +1,1 @@
+{"edges":[[0,1]],"nodes":[{"is_barrier":false,"is_compute":true,"is_load":false,"is_store":false,"is_vector":false,"opcode":2036},{"is_barrier":false,"is_compute":true,"is_load":false,"is_store":false,"is_vector":false,"opcode":2733}],"source":"\tnegl\t%eax\n\tsbbl\t%eax, %eax\n"}

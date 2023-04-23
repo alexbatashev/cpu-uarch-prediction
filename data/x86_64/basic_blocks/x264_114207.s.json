@@ -1,0 +1,1 @@
+{"edges":[[0,1],[0,1]],"nodes":[{"is_barrier":false,"is_compute":false,"is_load":true,"is_store":false,"is_vector":false,"opcode":1833},{"is_barrier":false,"is_compute":false,"is_load":true,"is_store":false,"is_vector":false,"opcode":3076}],"source":"\tmovq\t8(%rbp), %rax\n\ttestb\t$2, 96(%rax)\n"}

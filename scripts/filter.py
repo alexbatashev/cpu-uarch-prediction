@@ -20,9 +20,8 @@ for m in measure_files:
         continue
     with open(os.path.join(measure_path, m), "r") as f:
         res = yaml.safe_load(f)
-        if "total_cycles" in res:
-            if res["total_cycles"] < res["noise"]:
-                os.unlink(os.path.join(measure_path, m))
+        if res["results"]["total_cycles"] <= res["results"]["noise"]:
+            os.unlink(os.path.join(measure_path, m))
 
 measure_files = [file_name for file_name in os.listdir(measure_path)]
 

@@ -1,0 +1,5 @@
+results:
+  num_runs: 1000
+  noise: 27936
+  total_cycles: 30852
+  cycles: 2916

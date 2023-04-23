@@ -1,0 +1,1 @@
+{"edges":[],"nodes":[{"is_barrier":false,"is_compute":true,"is_load":false,"is_store":false,"is_vector":false,"opcode":811}],"source":"\tcmpq\t$3, %r8\n"}
