@@ -3,8 +3,6 @@ import json
 import torch
 import yaml
 from torch_geometric.data import Data, Dataset
-import numpy
-#from torch.utils.data import Dataset
 
 
 def load_basic_block_data(json_file_path):
@@ -31,20 +29,20 @@ def load_basic_block_data(json_file_path):
     # Create a PyTorch Geometric Data object
     graph_data = Data(x=node_features, edge_index=edge_index)
 
-    return graph_data, data["source"]
+    return graph_data, data
 
 
 def load_all_basic_blocks_data(directory):
     basic_blocks_data = []
-    sources = []
+    raw = []
     for file_name in os.listdir(directory):
         if file_name.endswith(".json"):
             json_file_path = os.path.join(directory, file_name)
             basic_block_data, source = load_basic_block_data(json_file_path)
             basic_blocks_data.append(basic_block_data)
-            sources.append(source)
+            raw.append(source)
 
-    return basic_blocks_data, sources
+    return basic_blocks_data, raw
 
 
 def load_measured_data(directory):
@@ -62,9 +60,9 @@ def load_measured_data(directory):
 class BasicBlockDataset(Dataset):
     def __init__(self, embeddings_path, measurements_path):
         super().__init__(None, None, None)
-        embeddings, sources = load_all_basic_blocks_data(embeddings_path)
+        embeddings, raw = load_all_basic_blocks_data(embeddings_path)
         self.embeddings = embeddings
-        self.sources = sources
+        self.raw = raw
         self.measurements = load_measured_data(measurements_path)
 
     def len(self):
@@ -73,7 +71,7 @@ class BasicBlockDataset(Dataset):
     def get(self, index):
         x = self.embeddings[index]
         y = self.measurements[index]
-        z = self.sources[index]
+        z = self.raw[index]
 
         return x, y, z
 

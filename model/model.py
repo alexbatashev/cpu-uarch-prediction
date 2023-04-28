@@ -1,7 +1,10 @@
 import random
+
+import numpy
 import torch
 import os
-from model.reward import reward_function
+
+import model.reward
 import torch.optim as optim
 import model.utils as utils
 from tqdm import tqdm
@@ -28,25 +31,23 @@ def loss_function(predicted_port_pressures, measured_cycles, nodes, alpha=0.1):
 
     base_scale_factor = 1.0
 
-    pure_memory_instructions = [
-        i for i, node in enumerate(nodes) if (node[2] or node[3]) and not node[1]
-    ]
+    # print(nodes)
+    #
+    # port_pressures = predicted_port_pressures.detach().cpu().numpy()
+    #
+    # rewards = []
+    #
+    # print(len(port_pressures))
+    # print(len(port_pressures[0]))
+    # for i, p in enumerate(port_pressures):
+    #     print(i)
+    #     rewards.append(model.reward.reward_lsu_compute_separation(p, nodes, i - 1))
+    #
+    # base_scale_factor += numpy.average(rewards)
 
-    pure_compute_instructions = [
-        i for i, node in enumerate(nodes) if not (node[2] or node[3]) and node[1]
-    ]
-
-    port_pressures = predicted_port_pressures.detach().cpu().numpy()
-    for i in pure_memory_instructions:
-        for j in pure_compute_instructions:
-            for k in range(0, len(port_pressures[0])):
-                if port_pressures[i][k] != 0 and port_pressures[j][k] != 0:
-                    base_scale_factor += 0.2
-
-    # Combine the losses
     total_loss = alpha * regularization_term + measured_cycles_term
 
-    return base_scale_factor * total_loss
+    return total_loss * base_scale_factor
 
 
 def train(predictor, device, loader, num_epochs, learning_rate, checkpoint_dir, checkpoint_freq=50):
@@ -74,21 +75,20 @@ def train(predictor, device, loader, num_epochs, learning_rate, checkpoint_dir, 
     epochs = num_epochs - start_epoch
     pbar = tqdm(range(epochs * len(loader)))
     step = 0
-    train_loss = 0
     for i in range(start_epoch, num_epochs):
+        train_loss = 0
         for choice in loader:
             optimizer.zero_grad()
             #choice = loader.next()
-            bb, measured, _ = choice
+            bb, measured, raw = choice
             input_sequence = bb.x.to(device)
             edge_index = bb.edge_index.to(device)
 
             port_pressures, _ = predictor(input_sequence, edge_index)
 
-            loss = loss_function(port_pressures, measured, bb.x)
+            loss = loss_function(port_pressures, measured, raw["nodes"])
             train_loss += loss.item()
 
-            writer.add_scalar("Loss/train", train_loss, step)
             step += 1
             loss.backward()
             optimizer.step()
@@ -96,6 +96,7 @@ def train(predictor, device, loader, num_epochs, learning_rate, checkpoint_dir, 
             if (i + 1) % checkpoint_freq == 0:
                 utils.save_checkpoint(i + 1, predictor, optimizer, checkpoint_dir)
             pbar.update()
+        writer.add_scalar("Loss/train", train_loss, i)
 
     writer.flush()
     choice = random.choice(loader.dataset)
