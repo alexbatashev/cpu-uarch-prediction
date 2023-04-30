@@ -1,55 +1,33 @@
 import random
 import torch
 import os
-from model.reward import reward_function
+import numpy as np
 import torch.optim as optim
 import model.utils as utils
-from tqdm import tqdm
-from sys import platform
+from tqdm.auto import tqdm
 from torch.utils.tensorboard import SummaryWriter
-from torch.functional import F
+from torch import nn
 
 
-def loss_function(predicted_port_pressures, measured_cycles, nodes, alpha=0.1):
+def loss_function(predicted_port_pressures, measured_cycles, batch_size, batch, nodes, alpha=0.1):
+    cpu_batch = batch.detach().to(torch.device("cpu")).numpy()
+    split_predictions = torch.zeros(batch_size)
 
-    # Regularization term (L1 sparsity constraint)
-    regularization_term = torch.sum(torch.abs(predicted_port_pressures))
+    for i in range(0, batch_size):
+        all_max = []
+        for idx, b in enumerate(cpu_batch):
+            if b == i:
+                all_max.append(torch.max(predicted_port_pressures[idx]))
+        if len(all_max) > 0:
+            all_max = torch.stack(all_max)
+            split_predictions[i] = torch.sum(all_max)
 
-    # Measured cycles term
-    max_pp = torch.max(predicted_port_pressures, dim=1)
-    total_predicted_cycles = torch.sum(max_pp.values)
-    measured_cycles_term = F.mse_loss(total_predicted_cycles,
-                                      torch.tensor(measured_cycles, device=total_predicted_cycles.device))
+    criterion = nn.MSELoss()
 
-    # TODO proper mapping
-    # 2 -> is_load
-    # 3 -> is_store
-    # 1 -> is_compute
-
-    base_scale_factor = 1.0
-
-    pure_memory_instructions = [
-        i for i, node in enumerate(nodes) if (node[2] or node[3]) and not node[1]
-    ]
-
-    pure_compute_instructions = [
-        i for i, node in enumerate(nodes) if not (node[2] or node[3]) and node[1]
-    ]
-
-    port_pressures = predicted_port_pressures.detach().cpu().numpy()
-    for i in pure_memory_instructions:
-        for j in pure_compute_instructions:
-            for k in range(0, len(port_pressures[0])):
-                if port_pressures[i][k] != 0 and port_pressures[j][k] != 0:
-                    base_scale_factor += 0.2
-
-    # Combine the losses
-    total_loss = alpha * regularization_term + measured_cycles_term
-
-    return base_scale_factor * total_loss
+    return criterion(split_predictions, measured_cycles)
 
 
-def train(predictor, device, loader, num_epochs, learning_rate, checkpoint_dir, checkpoint_freq=50):
+def train(predictor, device, loader, num_epochs, batch_size, learning_rate, checkpoint_dir, checkpoint_freq=50):
     # Check if a GPU is available and set the device accordingly
 
     writer = SummaryWriter()
@@ -74,21 +52,19 @@ def train(predictor, device, loader, num_epochs, learning_rate, checkpoint_dir, 
     epochs = num_epochs - start_epoch
     pbar = tqdm(range(epochs * len(loader)))
     step = 0
-    train_loss = 0
     for i in range(start_epoch, num_epochs):
+        all_losses = []
         for choice in loader:
             optimizer.zero_grad()
-            #choice = loader.next()
-            bb, measured, _ = choice
+            bb, measured, raw = choice
             input_sequence = bb.x.to(device)
             edge_index = bb.edge_index.to(device)
 
-            port_pressures, _ = predictor(input_sequence, edge_index)
+            port_pressures = predictor(input_sequence, edge_index)
 
-            loss = loss_function(port_pressures, measured, bb.x)
-            train_loss += loss.item()
+            loss = loss_function(port_pressures, measured, batch_size, bb.batch, raw["nodes"])
+            all_losses.append(loss.item())
 
-            writer.add_scalar("Loss/train", train_loss, step)
             step += 1
             loss.backward()
             optimizer.step()
@@ -96,6 +72,8 @@ def train(predictor, device, loader, num_epochs, learning_rate, checkpoint_dir, 
             if (i + 1) % checkpoint_freq == 0:
                 utils.save_checkpoint(i + 1, predictor, optimizer, checkpoint_dir)
             pbar.update()
+        writer.add_scalar("Total Loss/train", np.sum(all_losses), i)
+        writer.add_scalar("Avg Loss/train", np.average(all_losses), i)
 
     writer.flush()
     choice = random.choice(loader.dataset)
