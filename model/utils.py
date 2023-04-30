@@ -7,10 +7,13 @@ from torch import nn
 from torch_geometric.utils import add_self_loops
 
 
-def one_hot_encoding(opcode, num_opcodes):
-    one_hot = torch.zeros(num_opcodes, dtype=torch.float)
+def one_hot_encoding(node, num_opcodes):
+    one_hot = torch.zeros(num_opcodes + 3, dtype=torch.float)
 
-    one_hot[opcode] = 1
+    one_hot[0] = (node["is_load"] == True)
+    one_hot[1] = node["is_store"] == True
+    one_hot[2] = node["is_compute"] == True
+    one_hot[node["opcode"] + 3] = 1
 
     return one_hot
 
@@ -24,7 +27,7 @@ def load_basic_block_data(json_file_path, num_opcodes):
     for node in data["nodes"]:
         assert 0 <= node["opcode"] < num_opcodes, f"Invalid opcode: {node['opcode']}"
         # TODO(Alex) future revisions of the dataset will be one-hot encoded beforehand
-        node_feature = one_hot_encoding(node["opcode"], num_opcodes)
+        node_feature = one_hot_encoding(node, num_opcodes)
         node_features.append(node_feature)
 
     # Convert edges into a tensor
@@ -63,17 +66,6 @@ def load_measured_data(directory):
             file.close()
             measured_cycles.append(float(data["results"]["cycles"]) / data["results"]["num_runs"])
     return measured_cycles
-
-
-class OpcodeEmbedding(nn.Module):
-    def __init__(self, num_opcodes, embedding_dim):
-        super(OpcodeEmbedding, self).__init__()
-        self.num_features = 5  # the number of features without opcode
-        self.embedding = nn.Embedding(num_opcodes + self.num_features, embedding_dim).to(torch.device("cuda"))
-
-    def forward(self, x):
-        opcode_embedding = self.embedding(x)
-        return opcode_embedding
 
 
 class BasicBlockDataset(Dataset):

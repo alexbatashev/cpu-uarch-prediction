@@ -9,11 +9,11 @@ from torch.utils.tensorboard import SummaryWriter
 from torch import nn
 
 
-def loss_function(predicted_port_pressures, measured_cycles, batch_size, batch, nodes, alpha=0.1):
+def loss_function(predicted_port_pressures, measured_cycles, batch, nodes, alpha=0.1):
     cpu_batch = batch.detach().to(torch.device("cpu")).numpy()
-    split_predictions = torch.zeros(batch_size)
+    split_predictions = torch.zeros(measured_cycles.shape[0])
 
-    for i in range(0, batch_size):
+    for i in range(0, measured_cycles.shape[0]):
         all_max = []
         for idx, b in enumerate(cpu_batch):
             if b == i:
@@ -62,7 +62,7 @@ def train(predictor, device, loader, num_epochs, batch_size, learning_rate, chec
 
             port_pressures = predictor(input_sequence, edge_index)
 
-            loss = loss_function(port_pressures, measured, batch_size, bb.batch, raw["nodes"])
+            loss = loss_function(port_pressures, measured, bb.batch, raw["nodes"])
             all_losses.append(loss.item())
 
             step += 1
