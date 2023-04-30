@@ -22,6 +22,9 @@ for m in measure_files:
         res = yaml.safe_load(f)
         if res["results"]["total_cycles"] <= res["results"]["noise"]:
             os.unlink(os.path.join(measure_path, m))
+        elif res["results"]["cycles"] / res["results"]["num_runs"] > 1000:
+            # This is a suspicious run
+            os.unlink(os.path.join(measure_path, m))
 
 measure_files = [file_name for file_name in os.listdir(measure_path)]
 
