@@ -34,8 +34,8 @@ for d in data_files:
         os.unlink(os.path.join(data_path, d))
         continue
 
-    with open(os.path.join(data_path, d), "r") as json_file:
-        data = json.load(json_file)
-        if len(data["nodes"]) == 0:
-            os.unlink(os.path.join(data_path, d))
-            os.unlink(os.path.join(measure_path, measure))
+    #with open(os.path.join(data_path, d), "r") as json_file:
+    #    data = json.load(json_file)
+    #    if len(data["nodes"]) == 0:
+    #        os.unlink(os.path.join(data_path, d))
+    #        os.unlink(os.path.join(measure_path, measure))
