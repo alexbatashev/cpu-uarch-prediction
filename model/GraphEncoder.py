@@ -20,12 +20,12 @@ class GCNEncoder(nn.Module):
 
 
 class GATEncoder(nn.Module):
-    def __init__(self, input_size, emb_size, hidden_size, num_heads=2):
+    def __init__(self, input_size, emb_size, hidden_size, num_heads=2, dtype=torch.float32):
         super(GATEncoder, self).__init__()
         self.hidden_size = hidden_size
-        self.embedding = nn.Linear(input_size, emb_size)
-        self.gat1 = GATConv(emb_size, hidden_size, heads=num_heads, concat=True)
-        self.gat2 = GCNConv(hidden_size * num_heads, hidden_size, heads=1, concat=False)
+        self.embedding = nn.Linear(input_size, emb_size, dtype=dtype)
+        self.gat1 = GATConv(emb_size, hidden_size, heads=num_heads, concat=True, dtype=dtype)
+        self.gat2 = GCNConv(hidden_size * num_heads, hidden_size, heads=1, concat=False, dtype=dtype)
 
     def forward(self, x, edge_index):
         x = self.embedding(x)

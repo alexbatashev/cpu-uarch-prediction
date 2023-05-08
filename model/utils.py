@@ -9,7 +9,7 @@ import model.mc_dataset_pb2
 
 
 class BasicBlockDataset(Dataset):
-    def __init__(self, dataset_path):
+    def __init__(self, dataset_path, dtype=torch.float32):
         super().__init__(None, None, None)
         with open(dataset_path, 'rb') as f:
             dataset = model.mc_dataset_pb2.MCDataset()
@@ -20,7 +20,7 @@ class BasicBlockDataset(Dataset):
             for d in dataset.data:
                 nodes = []
                 for n in d.graph.nodes:
-                    one_hot = torch.zeros([d.graph.num_opcodes])
+                    one_hot = torch.zeros([d.graph.num_opcodes], dtype=dtype)
                     one_hot[n.onehot] = 1
                     nodes.append(one_hot)
                 nodes = torch.stack(nodes)
@@ -36,8 +36,7 @@ class BasicBlockDataset(Dataset):
 
                 self.embeddings.append(Data(x=nodes, edge_index=edges))
 
-                # TODO(Alex): use num_runs
-                self.measurements.append(d.metrics.measured_cycles / 1000)
+                self.measurements.append(d.metrics.measured_cycles / getattr(d.metrics, 'num_runs', 1000))
 
                 raw = {"source": str(d.graph.source),
                        #"edges": d.graph.edges,
