@@ -5,76 +5,45 @@ import yaml
 from torch_geometric.data import Data, Dataset
 from torch import nn
 from torch_geometric.utils import add_self_loops
-
-
-def one_hot_encoding(node, num_opcodes):
-    one_hot = torch.zeros(num_opcodes + 3, dtype=torch.float)
-
-    one_hot[0] = (node["is_load"] == True)
-    one_hot[1] = node["is_store"] == True
-    one_hot[2] = node["is_compute"] == True
-    one_hot[node["opcode"] + 3] = 1
-
-    return one_hot
-
-
-def load_basic_block_data(json_file_path, num_opcodes):
-    with open(json_file_path, "r") as json_file:
-        data = json.load(json_file)
-
-    # Convert node features into a tensor
-    node_features = []
-    for node in data["nodes"]:
-        assert 0 <= node["opcode"] < num_opcodes, f"Invalid opcode: {node['opcode']}"
-        # TODO(Alex) future revisions of the dataset will be one-hot encoded beforehand
-        node_feature = one_hot_encoding(node, num_opcodes)
-        node_features.append(node_feature)
-
-    # Convert edges into a tensor
-    edge_index = torch.tensor(data["edges"], dtype=torch.long).t().contiguous()
-    # TODO(Alex) future versions of the dataset will have the default root node
-    edge_index, _ = add_self_loops(edge_index, num_nodes=len(node_features))
-
-    node_features = torch.stack(node_features)
-
-    # Create a PyTorch Geometric Data object
-    graph_data = Data(x=node_features, edge_index=edge_index)
-
-    return graph_data, data
-
-
-def load_all_basic_blocks_data(directory, num_opcodes):
-    basic_blocks_data = []
-    raw = []
-    for file_name in os.listdir(directory):
-        if file_name.endswith(".json"):
-            json_file_path = os.path.join(directory, file_name)
-            basic_block_data, source = load_basic_block_data(json_file_path, num_opcodes)
-            basic_blocks_data.append(basic_block_data)
-            raw.append(source)
-
-    return basic_blocks_data, raw
-
-
-def load_measured_data(directory):
-    measured_cycles = []
-    for file_name in os.listdir(directory):
-        if file_name.endswith(".yaml"):
-            file_path = os.path.join(directory, file_name)
-            file = open(file_path, "r")
-            data = yaml.safe_load(file)
-            file.close()
-            measured_cycles.append(float(data["results"]["cycles"]) / data["results"]["num_runs"])
-    return measured_cycles
+import model.mc_dataset_pb2
 
 
 class BasicBlockDataset(Dataset):
-    def __init__(self, embeddings_path, measurements_path, num_opcodes):
+    def __init__(self, dataset_path):
         super().__init__(None, None, None)
-        embeddings, raw = load_all_basic_blocks_data(embeddings_path, num_opcodes)
-        self.embeddings = embeddings
-        self.raw = raw
-        self.measurements = load_measured_data(measurements_path)
+        with open(dataset_path, 'rb') as f:
+            dataset = model.mc_dataset_pb2.MCDataset()
+            dataset.ParseFromString(f.read())
+            self.embeddings = []
+            self.raw = []
+            self.measurements = []
+            for d in dataset.data:
+                nodes = []
+                for n in d.graph.nodes:
+                    one_hot = torch.zeros([d.graph.num_opcodes])
+                    one_hot[n.onehot] = 1
+                    nodes.append(one_hot)
+                nodes = torch.stack(nodes)
+                edges = []
+                for e in d.graph.edges:
+                    edges.append(torch.tensor([getattr(e, 'from', 0), e.to]))
+                if len(edges) == 0:
+                    continue
+                edges = torch.stack(edges).t().contiguous()
+
+                self.num_opcodes = d.graph.num_opcodes
+                self.has_virtual_root = d.graph.has_virtual_root
+
+                self.embeddings.append(Data(x=nodes, edge_index=edges))
+
+                # TODO(Alex): use num_runs
+                self.measurements.append(d.metrics.measured_cycles / 1000)
+
+                raw = {"source": str(d.graph.source),
+                       #"edges": d.graph.edges,
+                       #"nodes": d.graph.nodes
+                       }
+                self.raw.append(raw)
 
     def len(self):
         return len(self.embeddings)

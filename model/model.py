@@ -62,7 +62,7 @@ def train(predictor, device, loader, num_epochs, batch_size, learning_rate, chec
 
             port_pressures = predictor(input_sequence, edge_index)
 
-            loss = loss_function(port_pressures, measured, bb.batch, raw["nodes"])
+            loss = loss_function(port_pressures, measured, bb.batch, [])
             all_losses.append(loss.item())
 
             step += 1
