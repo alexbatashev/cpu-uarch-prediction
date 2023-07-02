@@ -11,11 +11,11 @@ from google.protobuf import symbol_database as _symbol_database
 _sym_db = _symbol_database.Default()
 
 
-from model import bb_graph_pb2 as lib_dot_structures_dot_bb__graph__pb2
-from model import bb_metrics_pb2 as lib_dot_structures_dot_bb__metrics__pb2
+from model import mc_graph_pb2 as lib_dot_structures_dot_mc__graph__pb2
+from model import mc_metrics_pb2 as lib_dot_structures_dot_mc__metrics__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1flib/structures/mc_dataset.proto\x12\x07llvm_ml\x1a\x1dlib/structures/bb_graph.proto\x1a\x1flib/structures/bb_metrics.proto\"S\n\x0bMCDataPiece\x12\x1f\n\x05graph\x18\x01 \x01(\x0b\x32\x10.llvm_ml.BBGraph\x12#\n\x07metrics\x18\x02 \x01(\x0b\x32\x12.llvm_ml.BBMetrics\"/\n\tMCDataset\x12\"\n\x04\x64\x61ta\x18\x01 \x03(\x0b\x32\x14.llvm_ml.MCDataPieceb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1flib/structures/mc_dataset.proto\x12\x07llvm_ml\x1a\x1dlib/structures/mc_graph.proto\x1a\x1flib/structures/mc_metrics.proto\"S\n\x0bMCDataPiece\x12\x1f\n\x05graph\x18\x01 \x01(\x0b\x32\x10.llvm_ml.MCGraph\x12#\n\x07metrics\x18\x02 \x01(\x0b\x32\x12.llvm_ml.MCMetrics\"/\n\tMCDataset\x12\"\n\x04\x64\x61ta\x18\x01 \x03(\x0b\x32\x14.llvm_ml.MCDataPieceb\x06proto3')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'lib.structures.mc_dataset_pb2', globals())
