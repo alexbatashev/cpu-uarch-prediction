@@ -4,3 +4,5 @@ checkpoints/
 .idea
 runs
 trained_models
+.DS_Store
+

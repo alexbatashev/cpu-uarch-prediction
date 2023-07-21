@@ -65,7 +65,10 @@ class BasicBlockDataset(Dataset):
                 edges = []
                 edge_attrs = []
                 for e in d.graph.edges:
-                    edges.append(torch.tensor([getattr(e, 'from', 0), getattr(e, 'to', 0)]))
+                    edge_from = getattr(e, 'from', 0)
+                    edges.append(torch.tensor([edge_from, getattr(e, 'to', 0)]))
+                    if edge_from == 0:
+                        edges.append(torch.tensor([getattr(e, 'to', 0), edge_from]))
                     edge_attrs.append(torch.tensor(1 if getattr(e, 'is_data', False) else 0))
                 if len(edges) == 0:
                     continue
