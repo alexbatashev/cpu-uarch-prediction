@@ -29,7 +29,13 @@ class BasicBlockDataset(Dataset):
             for d in dataset.data:
                 if getattr(d.metrics, 'measured_num_runs', 0) == 0:
                     continue
-                if d.metrics.measured_cycles / getattr(d.metrics, 'measured_num_runs') > 500:
+                if d.metrics.measured_cycles < 0:
+                    continue
+                if d.metrics.measured_cycles / getattr(d.metrics, 'measured_num_runs') > 50:
+                    continue
+                if d.metrics.workload_cache_misses - d.metrics.noise_cache_misses != 0:
+                    continue
+                if d.metrics.workload_context_switches - d.metrics.noise_context_switches != 0:
                     continue
                 # if d.metrics.measured_cycles / 1000 < min_cycles:
                 #     continue
@@ -66,18 +72,19 @@ class BasicBlockDataset(Dataset):
                 edge_attrs = []
                 for e in d.graph.edges:
                     edge_from = getattr(e, 'from', 0)
-                    edges.append(torch.tensor([edge_from, getattr(e, 'to', 0)]))
-                    if edge_from == 0:
-                        edges.append(torch.tensor([getattr(e, 'to', 0), edge_from]))
+                    edge_to = getattr(e, 'to', 0)
+                    edges.append(torch.tensor([edge_from, edge_to]))
+                    edges.append(torch.tensor([edge_to, edge_from]))
+                    edge_attrs.append(torch.tensor(1 if getattr(e, 'is_data', False) else 0))
                     edge_attrs.append(torch.tensor(1 if getattr(e, 'is_data', False) else 0))
                 if len(edges) == 0:
                     continue
                 edges = torch.stack(edges).t().contiguous()
                 edge_attrs = torch.stack(edge_attrs)
 
-                self.embeddings.append(Data(x=nodes, edge_index=edges, edge_attr=edge_attrs))
+                self.embeddings.append(Data(x=nodes, edge_index=edges, edge_attr=edge_attrs, y=d.metrics.measured_cycles / getattr(d.metrics, 'measured_num_runs', 1000)))
 
-                self.measurements.append(d.metrics.measured_cycles / getattr(d.metrics, 'measured_num_runs', 1000))
+                #self.measurements.append(d.metrics.measured_cycles / getattr(d.metrics, 'measured_num_runs', 1000))
 
                 raw = {"source": str(d.graph.source),
                        #"edges": d.graph.edges,
@@ -90,10 +97,10 @@ class BasicBlockDataset(Dataset):
 
     def get(self, index):
         x = self.embeddings[index]
-        y = self.measurements[index]
+        # y = self.measurements[index]
         z = self.raw[index]
 
-        return x, y, z
+        return x, z
 
 
 def unique_rows(tensor):

@@ -1,84 +1,128 @@
-import torch
-import lightning.pytorch as pl
-from torch import nn
+from python.llvm_ml.data import load_pyg_dataset
+import pytorch_lightning as pl
+from torch_geometric.loader import DataLoader
+from python.llvm_ml.utils import plot_histogram
+import torch.utils.data
 from lightning.pytorch.loggers import TensorBoardLogger
-from model.utils import get_all_nodes
-from torch.utils.data import DataLoader, TensorDataset
-import math
+import numpy as np
+import PIL.Image
+from torchvision.transforms import ToTensor
+from model.estimation import GNNEstimation, LSTMEstimation
+from torch.nn import Module, Linear, LSTM
+from torch import nn
+import torch.nn.functional as F
+from torch_geometric.nn import GraphConv, GCNConv
+from torch_geometric.utils import to_dense_batch
+import torch
 
-class Autoencoder(pl.LightningModule):
-    def __init__(self, input_dim, hidden_dim, batch_size):
-        super(Autoencoder, self).__init__()
-        self.encoder = nn.Sequential(
-            nn.Linear(input_dim, hidden_dim),
-            nn.ReLU()
-        )
-        self.decoder = nn.Sequential(
-            nn.Linear(hidden_dim, input_dim),
-            nn.ReLU()
-        )
-        self.batch_size = batch_size
+import warnings
+warnings.filterwarnings('ignore', category=UserWarning, message='TypedStorage is deprecated')
 
-    def forward(self, x):
-        encoded = self.encoder(x)
-        decoded = self.decoder(encoded)
+dataset = load_pyg_dataset("./data/ryzen3600_v1.pb", prefilter=False)
+print(f"Training with {len(dataset)} samples")
 
-        return encoded, decoded
+class Embedding(pl.LightningModule):
+    def __init__(self, input_dim, parameters):
+        super().__init__()
+        self.hidden_dim = parameters['hidden_dim']
+        self.batch_size = parameters['batch_size']
+
+        self.conv = GCNConv(input_dim, self.hidden_dim)
+
+        # self.embedding = nn.Embedding(20000, hidden_dim)
+
+        self.lstm1 = LSTM(self.hidden_dim, self.hidden_dim, batch_first=True)
+        self.lstm2 = LSTM(self.hidden_dim, self.hidden_dim, batch_first=True)
+
+        self.hidden1 = self.init_hidden(self.hidden_dim)
+        self.hidden2 = self.init_hidden(self.hidden_dim)
+
+        self.fc = Linear(self.hidden_dim, input_dim)
+
+        self.lr = parameters['learning_rate']
+
+    def init_hidden(self, out_dim):
+        return torch.zeros([1, self.batch_size, out_dim]).cuda().detach(), torch.zeros([1, self.batch_size, out_dim]).cuda().detach()
+
+    def forward(self, data):
+        x = data.x
+        edge_index = data.edge_index
+        batch = data.batch
+
+        x = self.conv(x, edge_index)
+        x = F.relu(x)
+
+        nodes, mask = to_dense_batch(x, batch)
+
+        # x = self.embedding(nodes[:, 1:, :].type(torch.LongTensor).cuda())
+
+        x, hidden = self.lstm1(nodes[:, 1:, :], self.hidden1)
+        h0, h1 = hidden
+        self.hidden1 = (h0.detach(), h1.detach())
+
+        #x = torch.flip(x, dims=[0, 1])
+
+        # x, hidden = self.lstm2(x, self.hidden2)
+        # h0, h1 = hidden
+        # self.hidden2 = (h0.detach(), h1.detach())
+
+        #x = torch.flip(x, dims=[0, 1])
+        # x = F.relu(x)
+
+        x = self.fc(x)
+        x = F.sigmoid(x)
+
+        return x
 
     def training_step(self, batch, batch_idx):
-        inputs = batch[0]
-        _, decoded = self(inputs)
-        criterion = nn.MSELoss()
-        loss = criterion(decoded, inputs)
+        bb, raw = batch
+        y_hat = self(bb)
 
-        l1_lambda = 0.001
-        l1_norm = sum(p.abs().sum() for p in self.parameters())
-        loss += l1_lambda * l1_norm
+        nodes, mask = to_dense_batch(bb.x, bb.batch)
 
-        self.log("training_loss", loss, on_epoch=True, batch_size=self.batch_size)
-
-        if self.global_step % 100 == 0:
-            for name, param in self.named_parameters():
-                self.logger.experiment.add_histogram(name, param, self.global_step)
-                if param.grad is not None:
-                    self.logger.experiment.add_histogram(f"{name}_grad", param.grad, self.global_step)
-
-        # if batch_idx == 0 and self.logger is not None:
-        #     n_samples = min(inputs.size(0), 8)
-        #     input_size = inputs.size(-1)
-        #     size_approximation = int(math.sqrt(input_size))
-        #     comparison = torch.cat([inputs[:n_samples], decoded[:n_samples]])
-        #     self.logger.experiment.add_images("reconstructed_samples", comparison.view(n_samples * 2, 1, size_approximation, size_approximation), self.current_epoch)
+        loss = F.cross_entropy(y_hat, nodes[:, 1:, :])
+        self.log("train_loss", loss, on_epoch=True, batch_size=self.batch_size)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        inputs = batch[0]
-        _, decoded = self(inputs)
-        criterion = nn.MSELoss()
-        loss = criterion(decoded, inputs)
+        bb, raw = batch
+        y_hat = self(bb)
+
+        nodes, mask = to_dense_batch(bb.x, bb.batch)
+
+        loss = F.cross_entropy(y_hat, nodes[:, 1:, :])
         self.log("val_loss", loss, on_epoch=True, batch_size=self.batch_size)
+        return loss
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters(), lr=0.0001, weight_decay=0.001)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=6, factor=0.1)
+        return {
+            'optimizer': optimizer,
+            'lr_scheduler': {
+                'scheduler': scheduler,
+                'monitor': 'val_loss',
+            }
+        }
 
 
-nodes = get_all_nodes("data/i5_1135g7.pb")
+parameters = {
+    'batch_size': 64,
+    'hidden_dim': 128,
+    'learning_rate': 0.1,
+}
 
-input_dim = nodes.shape[1]
-hidden_dim = 256
-batch_size = 32
+num_training = int(0.8 * len(dataset))
+num_val = len(dataset) - num_training
 
-dataset = TensorDataset(nodes)
-train_dataset, val_dataset = torch.utils.data.random_split(dataset, [int(0.8 * len(dataset)), len(dataset) - int(0.8 * len(dataset))])
-train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=6)
-val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=6)
+train_dataset, val_dataset = torch.utils.data.random_split(dataset, [num_training, num_val])
+train_loader = DataLoader(train_dataset, batch_size=parameters['batch_size'], shuffle=True, num_workers=6, drop_last=True)
+val_loader = DataLoader(val_dataset, batch_size=parameters['batch_size'], shuffle=False, num_workers=6, drop_last=True)
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model = Embedding(16, parameters)
 
-logger = TensorBoardLogger("runs", name="tgl_embeddings")
-
-model = Autoencoder(input_dim, hidden_dim, batch_size).to(device)
-trainer = pl.Trainer(max_epochs=100, logger=logger, accelerator="gpu")
-trainer.fit(model, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader)
-
-torch.save(model, "trained_models/x86_embeddings.pt")
+logger = TensorBoardLogger("runs", name="x64_embedding")
+logger.log_graph(model)
+logger.log_hyperparams(parameters)
+trainer = pl.Trainer(max_epochs=100, logger=logger)
+trainer.fit(model, train_loader, val_loader)
