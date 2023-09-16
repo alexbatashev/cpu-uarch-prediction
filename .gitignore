@@ -3,3 +3,4 @@ checkpoints/
 .idea
 runs
 trained_models
+*.cbuf
